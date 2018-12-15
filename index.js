@@ -37,18 +37,18 @@ async function performQueries(db) {
     // date of first and date of last, get amount of days
     const sqlGetFirstRow = 'SELECT * FROM Comments ORDER BY created_utc ASC LIMIT 1'
     const firstDateResult = await getFromDB(db, sqlGetFirstRow)
-    const firstDateUTC = firstDateResult[0].created_utc
-
-    console.log(
-        `First date: ${new Date(parseInt(firstDateUTC * 1000))}`
-    )
+    const firstDateUTCSeconds = firstDateResult[0].created_utc
 
     const sqlGetLastRow = 'SELECT * FROM Comments ORDER BY created_utc DESC LIMIT 1'
     const lastDateResult = await getFromDB(db, sqlGetLastRow)
-    const lastDateUTC = lastDateResult[0].created_utc
+    const lastDateUTCSeconds = lastDateResult[0].created_utc
+
+    // get number of days
+    const secondsBetween = lastDateUTCSeconds - firstDateUTCSeconds
+    const secondsInDay = 86400
 
     console.log(
-        `Last date: ${new Date(parseInt(lastDateUTC * 1000))}`
+        `${secondsBetween / secondsInDay} days between first & last comment`
     )
 }
 
