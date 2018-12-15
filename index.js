@@ -26,60 +26,36 @@ async function performQueries(db) {
     const specificUser = 'gigaquack'
     const specificSubredditID = 't5_2fwo'
 
-    /*
-    // amount of comments by specific user:
-    const sqlUserCommentsAmount = 
-        `SELECT * FROM Comments WHERE author = '${specificUser}'`
-    db.query(sqlUserCommentsAmount, (err, result) => {
-        if (err) throw err
-        console.log(
-            `${specificUser} has posted ${result.length} comments`
-        )
-    })
-    */
-
-    const userCommentsAmount = await getUserCommentsAmount(db, specificUser)
-    console.log(
-        `${specificUser} has posted ${userCommentsAmount} comments`
-    )
-
     // amount of comments a specific subreddit gets per day
+    const sqlUserCommentsAmount = 
+            `SELECT * FROM Comments WHERE author = '${specificUser}'`
+    const userCommentsAmountResult = await getFromDB(db, sqlUserCommentsAmount)
+    console.log(
+        `${specificUser} has posted ${userCommentsAmountResult.length} comments`
+    )
 
     // date of first and date of last, get amount of days
     const sqlGetFirstRow = 'SELECT * FROM Comments ORDER BY created_utc ASC LIMIT 1'
-    const firstDateUTC = await db.query(sqlGetFirstRow, (err, result) => {
-        if (err) throw err
-        return new Promise((resolve, reject) => {
-            resolve(result[0].created_utc)
-        })
-    })
-
-    const sqlGetLastRow = 'SELECT * FROM Comments ORDER BY created_utc DESC LIMIT 1'
-    const lastDateUTC = await db.query(sqlGetLastRow, (err, result) => {
-        if (err) throw err
-        return new Promise((resolve, reject) => {
-            resolve(result[0].created_utc)
-        })
-    })
+    const firstDateResult = await getFromDB(db, sqlGetFirstRow)
+    const firstDateUTC = firstDateResult[0].created_utc
 
     console.log(
-        `First date: ${new Date(Number(firstDateUTC))}`
+        `First date: ${new Date(parseInt(firstDateUTC * 1000))}`
     )
 
+    const sqlGetLastRow = 'SELECT * FROM Comments ORDER BY created_utc DESC LIMIT 1'
+    const lastDateResult = await getFromDB(db, sqlGetLastRow)
+    const lastDateUTC = lastDateResult[0].created_utc
+
     console.log(
-        `Last date: ${new Date(Number(lastDateUTC))}`
+        `Last date: ${new Date(parseInt(lastDateUTC * 1000))}`
     )
 }
 
-// amount of comments by specific user
-function getUserCommentsAmount(db, specificUser) {
-    return new Promise(resolve => {
-        const sqlUserCommentsAmount = 
-            `SELECT * FROM Comments WHERE author = '${specificUser}'`
-
-        db.query(sqlUserCommentsAmount, (err, result) => {
+function getFromDB(db, sqlQuery) {
+    return new Promise(resolve => 
+        db.query(sqlQuery, (err, result) => {
             if (err) throw err
-            resolve(result.length)
-        })
-    })
+            resolve(result)
+    }))
 }
