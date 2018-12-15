@@ -26,29 +26,16 @@ async function performQueries(db) {
     const specificUser = 'gigaquack'
     const specificSubredditID = 't5_2fwo'
 
-    // amount of comments a specific subreddit gets per day
-    const sqlUserCommentsAmount = 
-            `SELECT * FROM Comments WHERE author = '${specificUser}'`
-    const userCommentsAmountResult = await getFromDB(db, sqlUserCommentsAmount)
+    const userCommentsAmount = await getUserCommentsAmount(db, specificUser)
     console.log(
-        `${specificUser} has posted ${userCommentsAmountResult.length} comments`
+        `${specificUser} has posted ${userCommentsAmount} comments`
     )
 
-    // date of first and date of last, get amount of days
-    const sqlGetFirstRow = 'SELECT * FROM Comments ORDER BY created_utc ASC LIMIT 1'
-    const firstDateResult = await getFromDB(db, sqlGetFirstRow)
-    const firstDateUTCSeconds = firstDateResult[0].created_utc
-
-    const sqlGetLastRow = 'SELECT * FROM Comments ORDER BY created_utc DESC LIMIT 1'
-    const lastDateResult = await getFromDB(db, sqlGetLastRow)
-    const lastDateUTCSeconds = lastDateResult[0].created_utc
-
-    // get number of days
-    const secondsBetween = lastDateUTCSeconds - firstDateUTCSeconds
-    const secondsInDay = 86400
+    const averageSubredditCommentsAmount = 
+        await getAverageSubredditCommentsAmount(db, specificSubredditID)
 
     console.log(
-        `${secondsBetween / secondsInDay} days between first & last comment`
+        `The subreddit "programming" gets an average of ${averageSubredditCommentsAmount} comments per day`
     )
 }
 
@@ -58,4 +45,33 @@ function getFromDB(db, sqlQuery) {
             if (err) throw err
             resolve(result)
     }))
+}
+
+async function getUserCommentsAmount(db, specificUser) {
+    const sqlUserCommentsAmount = 
+            `SELECT * FROM Comments WHERE author = '${specificUser}'`
+    const userCommentsAmountResult = await getFromDB(db, sqlUserCommentsAmount)
+    return userCommentsAmountResult.length
+}
+
+async function getAverageSubredditCommentsAmount(db, specificSubredditID) {
+    // date of first and date of last, get amount of days
+    const sqlGetFirstRow = 'SELECT * FROM Comments ORDER BY created_utc ASC LIMIT 1'
+    const firstDateResult = await getFromDB(db, sqlGetFirstRow)
+    const firstDateUTCSeconds = firstDateResult[0].created_utc
+
+    const sqlGetLastRow = 'SELECT * FROM Comments ORDER BY created_utc DESC LIMIT 1'
+    const lastDateResult = await getFromDB(db, sqlGetLastRow)
+    const lastDateUTCSeconds = lastDateResult[0].created_utc
+
+    const secondsBetween = lastDateUTCSeconds - firstDateUTCSeconds
+    const secondsInDay = 86400
+    const daysAmount = secondsBetween / secondsInDay
+
+    const sqlGetTotalSubredditCommentsAmount =
+        `SELECT * FROM Comments WHERE subreddit_id = '${specificSubredditID}'`
+    const totalSubredditCommentsAmountResult = 
+        await getFromDB(db, sqlGetTotalSubredditCommentsAmount)
+
+    return totalSubredditCommentsAmountResult.length / daysAmount
 }
