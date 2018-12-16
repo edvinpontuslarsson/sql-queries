@@ -24,18 +24,21 @@ async function performQueries(db) {
     // 2007 file - user: gigaquack, subreddit_id: t5_2fwo (programming)
 
     const specificUser = 'gigaquack'
+    const specificSubreddit = 'programming'
     const specificSubredditID = 't5_2fwo'
 
     const userCommentsAmount = await getUserCommentsAmount(db, specificUser)
-    console.log(
-        `${specificUser} has posted ${userCommentsAmount} comments`
-    )
+    console.log(`${specificUser} has posted ${userCommentsAmount} comments`)
 
     const averageSubredditCommentsAmount = 
         await getAverageSubredditCommentsAmount(db, specificSubredditID)
-
     console.log(
-        `The subreddit "programming" gets an average of ${averageSubredditCommentsAmount} comments per day`
+        `The subreddit "${specificSubreddit}" gets an average of ${averageSubredditCommentsAmount} comments per day`
+    )
+
+    const amountOfCommentsContainingLOL = await getAmountOfCommentsContainingLOL(db)
+    console.log(
+        `${amountOfCommentsContainingLOL} comments include the word "lol"`
     )
 }
 
@@ -55,7 +58,6 @@ async function getUserCommentsAmount(db, specificUser) {
 }
 
 async function getAverageSubredditCommentsAmount(db, specificSubredditID) {
-    // date of first and date of last, get amount of days
     const sqlGetFirstRow = 'SELECT * FROM Comments ORDER BY created_utc ASC LIMIT 1'
     const firstDateResult = await getFromDB(db, sqlGetFirstRow)
     const firstDateUTCSeconds = firstDateResult[0].created_utc
@@ -74,4 +76,11 @@ async function getAverageSubredditCommentsAmount(db, specificSubredditID) {
         await getFromDB(db, sqlGetTotalSubredditCommentsAmount)
 
     return totalSubredditCommentsAmountResult.length / daysAmount
+}
+
+async function getAmountOfCommentsContainingLOL(db) {
+    const sqlLOLAmount = 
+        `SELECT * FROM Comments WHERE body LIKE '%lol%'`
+    const lolAmountResult = await getFromDB(db, sqlLOLAmount)
+    return lolAmountResult.length
 }
