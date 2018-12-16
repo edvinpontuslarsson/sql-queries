@@ -2,6 +2,7 @@
 
 require('dotenv').config()
 const mySql = require('mysql')
+const arrayChunk = require('array-chunk')
 const arrayUnique = require('array-unique')
 
 ;(() => {
@@ -21,11 +22,6 @@ function getDbConnection () {
 }
 
 async function performQueries(db) {
-    // for specific user, find someone with multiple posts
-    // 2007 file - user: gigaquack, subreddit_id: t5_2fwo (programming)
-
-    // perhaps put in object and return that. 
-
     const specificUser = 'gigaquack'
     const specificSubreddit = 'programming'
     const specificSubredditID = 't5_2fwo'
@@ -47,7 +43,13 @@ async function performQueries(db) {
 
     const nestedCommentsConnectedToLink = await getNestedCommentsConnectedToLink(db, specificLink)
     const subredditsConnectedToLink = getSubredditsFromNestedComments(nestedCommentsConnectedToLink)
-    console.log(subredditsConnectedToLink)
+    console.log(
+        `Users that commented on ${specificLink} also posted to these subreddits: ${subredditsConnectedToLink.join(', ')}`
+    )
+
+    const allComments = await getAllComments(db)
+    const allAuthors = getAllAuthors(allComments)
+    console.log(allAuthors)
 }
 
 function getFromDB(db, sqlQuery) {
@@ -58,10 +60,15 @@ function getFromDB(db, sqlQuery) {
     }))
 }
 
+function getAllComments(db) {
+    const sqlGetAllComments = 'SELECT * FROM Comments'
+    return getFromDB(db, sqlGetAllComments)
+}
+
 // How many comments have a specific user posted?
 async function getUserCommentsAmount(db, specificUser) {
     const sqlUserCommentsAmount = 
-            `SELECT * FROM Comments WHERE author = '${specificUser}'`
+            `SELECT COUNT(*) FROM Comments WHERE author = '${specificUser}'`
     const userCommentsAmountResult = await getFromDB(db, sqlUserCommentsAmount)
     return userCommentsAmountResult.length
 }
@@ -120,4 +127,15 @@ function getSubredditsFromNestedComments(nestedComments) {
     const subreddits = nestedComments.flat()
         .map(comment => comment.subreddit)
     return arrayUnique(subreddits)
+}
+
+function getAllAuthors(allComments) {
+    const allAuthors = allComments.map(comment => comment.author)
+
+    // arrayUnique has trouble handling arrays with more than 9999 items
+    const arrayChunks = arrayChunk(allAuthors, 9999)
+
+    arrayChunks.forEach(chunk => { arrayUnique(chunk) })
+
+    return arrayChunks.flat()
 }
