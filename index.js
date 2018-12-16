@@ -2,6 +2,7 @@
 
 require('dotenv').config()
 const mySql = require('mysql')
+const arrayUnique = require('array-unique')
 
 ;(() => {
     const db = getDbConnection()
@@ -23,9 +24,12 @@ async function performQueries(db) {
     // for specific user, find someone with multiple posts
     // 2007 file - user: gigaquack, subreddit_id: t5_2fwo (programming)
 
+    // perhaps put in object and return that. 
+
     const specificUser = 'gigaquack'
     const specificSubreddit = 'programming'
     const specificSubredditID = 't5_2fwo'
+    const specificLink = 't3_5yba1'
 
     const userCommentsAmount = await getUserCommentsAmount(db, specificUser)
     console.log(`${specificUser} has posted ${userCommentsAmount} comments`)
@@ -40,6 +44,10 @@ async function performQueries(db) {
     console.log(
         `${amountOfCommentsContainingLOL} comments include the word "lol"`
     )
+
+    const nestedCommentsConnectedToLink = await getNestedCommentsConnectedToLink(db, specificLink)
+    const subredditsConnectedToLink = getSubredditsFromNestedComments(nestedCommentsConnectedToLink)
+    console.log(subredditsConnectedToLink)
 }
 
 function getFromDB(db, sqlQuery) {
@@ -50,6 +58,7 @@ function getFromDB(db, sqlQuery) {
     }))
 }
 
+// How many comments have a specific user posted?
 async function getUserCommentsAmount(db, specificUser) {
     const sqlUserCommentsAmount = 
             `SELECT * FROM Comments WHERE author = '${specificUser}'`
@@ -57,6 +66,7 @@ async function getUserCommentsAmount(db, specificUser) {
     return userCommentsAmountResult.length
 }
 
+// How many comments does a specific subreddit get per day?
 async function getAverageSubredditCommentsAmount(db, specificSubredditID) {
     const sqlGetFirstRow = 'SELECT * FROM Comments ORDER BY created_utc ASC LIMIT 1'
     const firstDateResult = await getFromDB(db, sqlGetFirstRow)
@@ -78,9 +88,36 @@ async function getAverageSubredditCommentsAmount(db, specificSubredditID) {
     return totalSubredditCommentsAmountResult.length / daysAmount
 }
 
+// How many comments include the word ‘lol’?
 async function getAmountOfCommentsContainingLOL(db) {
     const sqlLOLAmount = 
         `SELECT * FROM Comments WHERE body LIKE '%lol%'`
     const lolAmountResult = await getFromDB(db, sqlLOLAmount)
     return lolAmountResult.length
+}
+
+// Users that commented on a specific link has also posted to which subreddits?
+async function getNestedCommentsConnectedToLink(db, specificLink) {
+    const subreddits = []
+    
+    return new Promise(async resolve => {
+        const sqlUsers = `SELECT * FROM Comments WHERE link_id = '${specificLink}'`
+        const usersResult = await getFromDB(db, sqlUsers)
+        const users = usersResult.map(row => row.author)
+
+        users.forEach(user => {
+            const sqlComments = `SELECT * FROM Comments WHERE author = '${user}'`
+            const commentsResult = getFromDB(db, sqlComments)
+
+            subreddits.push(commentsResult)
+        })
+
+        resolve(Promise.all(subreddits))
+    })
+}
+
+function getSubredditsFromNestedComments(nestedComments) {
+    const subreddits = nestedComments.flat()
+        .map(comment => comment.subreddit)
+    return arrayUnique(subreddits)
 }
