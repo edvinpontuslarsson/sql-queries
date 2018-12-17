@@ -2,7 +2,6 @@
 
 require('dotenv').config()
 const mySql = require('mysql')
-const arrayChunk = require('array-chunk')
 const arrayUnique = require('array-unique')
 
 ;(() => {
@@ -33,7 +32,7 @@ async function performQueries(db) {
     const averageSubredditCommentsAmount = 
         await getAverageSubredditCommentsAmount(db, specificSubredditID)
     console.log(
-        `The subreddit "${specificSubreddit}" gets an average of ${averageSubredditCommentsAmount} comments per day`
+        `The subreddit "${specificSubreddit}" got an average of ${averageSubredditCommentsAmount} comments per day`
     )
 
     const amountOfCommentsContainingLOL = await getAmountOfCommentsContainingLOL(db)
@@ -46,10 +45,20 @@ async function performQueries(db) {
         `Users that commented on the link ${specificLink} also posted to these subreddits: ${subsFromLink}`
     )
 
-    const highScoreUsers = await getHighScoreUsers(db)
-    const lowScoreUsers = await getLowScoreUsers(db)
-    console.log(`${highScoreUsers[0].author} have the highest scored comments of ${highScoreUsers[0].combined_score}`)
-    console.log(`${lowScoreUsers[0].author} have the highest scored comments of ${lowScoreUsers[0].combined_score}`)
+    const highScoreUsersResult = await getHighScoreUsers(db)
+    const lowScoreUsersResult = await getLowScoreUsers(db)
+
+    const highScoreUsers = highScoreUsersResult.map(item => item.author).join(', ')
+    const lowScoreUsers = lowScoreUsersResult.map(item => item.author).join(', ')
+
+    console.log(`The users ${highScoreUsers} have the highest combined score with ${highScoreUsersResult[0].combined_score}`)
+    console.log(`The users ${lowScoreUsers} have the lowest combined score with ${lowScoreUsersResult[0].combined_score}`)
+
+    const highScoreCommentsResult = await getHighScoreComments(db)
+
+    const highScoreComments = highScoreCommentsResult.map(item => item.subreddit_id).join(', ')
+
+    console.log(`The subreddits ${highScoreComments} have the highest scored comments with ${highScoreCommentsResult[0].score}`)
 }
 
 // How many comments have a specific user posted?
@@ -143,34 +152,52 @@ function getSubsFromIDs(db, subIDs) {
 
 // Which users have the highest and lowest combined scores? (combined as the sum of all scores)
 async function getHighScoreUsers(db) {
-    const max = await getMaxScore(db)
-    const sqlGetHighScoreUsers = 
+    const max = await getMaxCombinedScore(db)
+
+    const sqlGetHighScoreUsers =
         `SELECT * FROM Authors WHERE combined_score = '${max[0].score}'`
     const highScoreUsers = getFromDB(db, sqlGetHighScoreUsers)
     return highScoreUsers
 }
 
 async function getLowScoreUsers(db) {
-    const min = await getMinScore(db)
+    const min = await getMinCombinedScore(db)
     const sqlGetLowScoreUsers =
         `SELECT * FROM Authors WHERE combined_score = '${min[0].score}'`
     const lowScoreUsers = getFromDB(db, sqlGetLowScoreUsers)
     return lowScoreUsers
 }
 
-function getMaxScore(db) {
+function getMaxCombinedScore(db) {
     return new Promise(resolve => {
-        const sqlMaxScore = 'SELECT MAX(combined_score) AS score FROM Authors'
-        const max = getFromDB(db, sqlMaxScore)
-        resolve(max)
+        const sqlMaxComboScore = 'SELECT MAX(combined_score) AS score FROM Authors'
+        const maxCombo = getFromDB(db, sqlMaxComboScore)
+        resolve(maxCombo)
     })
 }
 
-function getMinScore(db) {
+function getMinCombinedScore(db) {
     return new Promise(resolve => {
-        const sqlMinScore = 'SELECT MIN(combined_score) AS score FROM Authors'
-        const min = getFromDB(db, sqlMinScore)
-        resolve(min)
+        const sqlMinComboScore = 'SELECT MIN(combined_score) AS score FROM Authors'
+        const minCombo = getFromDB(db, sqlMinComboScore)
+        resolve(minCombo)
+    })
+}
+
+// Which subreddits have the highest and lowest scored comments?
+async function getHighScoreComments(db) {
+    const max = await getMaxScore(db)
+    const sqlHighScoreComments = 
+        `SELECT * FROM Comments where score = ${max[0].score}`
+    const highScoreComments = getFromDB(db, sqlHighScoreComments)
+    return highScoreComments
+}
+
+function getMaxScore(db) {
+    return new Promise(resolve => {
+        const sqlMax = 'SELECT MAX(score) AS score FROM Comments'
+        const max = getFromDB(db, sqlMax)
+        resolve(max)
     })
 }
 
