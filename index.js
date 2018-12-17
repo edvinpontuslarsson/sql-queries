@@ -49,7 +49,7 @@ async function performQueries(db) {
     const highScoreUsers = await getHighScoreUsers(db)
     const lowScoreUsers = await getLowScoreUsers(db)
     console.log(`${highScoreUsers[0].author} have the highest scored comments of ${highScoreUsers[0].combined_score}`)
-    console.log(`${lowScoreUsers} has the lowest scored comments`)
+    console.log(`${lowScoreUsers[0].author} have the highest scored comments of ${lowScoreUsers[0].combined_score}`)
 }
 
 // How many comments have a specific user posted?
@@ -146,8 +146,16 @@ async function getHighScoreUsers(db) {
     const max = await getMaxScore(db)
     const sqlGetHighScoreUsers = 
         `SELECT * FROM Authors WHERE combined_score = '${max[0].score}'`
-    const highScoreUsers = await getFromDB(db, sqlGetHighScoreUsers)
+    const highScoreUsers = getFromDB(db, sqlGetHighScoreUsers)
     return highScoreUsers
+}
+
+async function getLowScoreUsers(db) {
+    const min = await getMinScore(db)
+    const sqlGetLowScoreUsers =
+        `SELECT * FROM Authors WHERE combined_score = '${min[0].score}'`
+    const lowScoreUsers = getFromDB(db, sqlGetLowScoreUsers)
+    return lowScoreUsers
 }
 
 function getMaxScore(db) {
@@ -158,8 +166,12 @@ function getMaxScore(db) {
     })
 }
 
-function getLowScoreUsers(db) {
-
+function getMinScore(db) {
+    return new Promise(resolve => {
+        const sqlMinScore = 'SELECT MIN(combined_score) AS score FROM Authors'
+        const min = getFromDB(db, sqlMinScore)
+        resolve(min)
+    })
 }
 
 function getFromDB(db, sqlQuery) {
