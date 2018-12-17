@@ -27,32 +27,19 @@ async function performQueries(db) {
     const specificLink = 't3_5yba1'
 
     const userCommentsAmount = await getUserCommentsAmount(db, specificUser)
-    console.log(`${specificUser} has posted ${userCommentsAmount} comments`)
 
     const averageSubredditCommentsAmount = 
         await getAverageSubredditCommentsAmount(db, specificSubredditID)
-    console.log(
-        `The subreddit "${specificSubreddit}" got an average of ${averageSubredditCommentsAmount} comments per day`
-    )
-
+    
     const amountOfCommentsContainingLOL = await getAmountOfCommentsContainingLOL(db)
-    console.log(
-        `${amountOfCommentsContainingLOL} comments include the word "lol"`
-    )
 
     const subsFromLink = await getSubsFromLink(db, specificLink)
-    console.log(
-        `Users that commented on the link ${specificLink} also posted to these subreddits: ${subsFromLink}`
-    )
-
+    
     const highScoreUsersResult = await getHighScoreUsers(db)
     const lowScoreUsersResult = await getLowScoreUsers(db)
 
     const highScoreUsers = highScoreUsersResult.map(item => item.author).join(', ')
     const lowScoreUsers = lowScoreUsersResult.map(item => item.author).join(', ')
-
-    console.log(`The users ${highScoreUsers} have the highest combined score with ${highScoreUsersResult[0].combined_score}`)
-    console.log(`The users ${lowScoreUsers} have the lowest combined score with ${lowScoreUsersResult[0].combined_score}`)
 
     const maxScoreSubsResult = await getSubredditsWithMaxComment(db)
     const lowScoreSubsResult = await getSubredditsWithMinimumComment(db)
@@ -65,9 +52,6 @@ async function performQueries(db) {
         lowScoreSubsResult.map(item => item[0].subreddit)
     ).join(', ')
 
-    console.log(`The subreddits ${maxScoreSubs} have the highest scored comments`)
-    console.log(`The subreddits ${lowScoreSubs} have the lowest scored comments`)
-
     const aUser = 'tinha'
 
     const linksByUser = await getLinksConnectedToUser(db, aUser)
@@ -75,12 +59,36 @@ async function performQueries(db) {
     const usersConnectedToUser = arrayUnique(
         usersConnectedToUserResult.flat().map(item => item.author)
     ).join(', ')
+    
+    const subExclusiveUsers = await getSubExclusiveUsers(db)
+
+    console.clear()
+
+    console.log(`${specificUser} has posted ${userCommentsAmount} comments`)
+
+    console.log(
+        `The subreddit "${specificSubreddit}" got an average of ${averageSubredditCommentsAmount} comments per day`
+    )
+
+    console.log(
+        `${amountOfCommentsContainingLOL} comments include the word "lol"`
+    )
+
+    console.log(
+        `Users that commented on the link ${specificLink} also posted to these subreddits: ${subsFromLink}`
+    )
+
+    console.log(`The users ${highScoreUsers} have the highest combined score with ${highScoreUsersResult[0].combined_score}`)
+    console.log(`The users ${lowScoreUsers} have the lowest combined score with ${lowScoreUsersResult[0].combined_score}`)
+
+    console.log(`The subreddits ${maxScoreSubs} have the highest scored comments`)
+    console.log(`The subreddits ${lowScoreSubs} have the lowest scored comments`)
+
     console.log(
         `${aUser} has potentially interacted with ${usersConnectedToUser}`
     )
 
-    const subExclusiveUsers = await getSubExclusiveUsers(db)
-    console.log(subExclusiveUsers)
+    console.log(`${subExclusiveUsers.length} users has only posted to a single subreddit`)
 }
 
 // How many comments have a specific user posted?
@@ -297,24 +305,36 @@ function getUsersConnectedToLinks(db, links) {
     })
 }
 
-// for each author, get * Comments where author
-
-async function getSubExclusiveUsers(db) {
+// Which users has only posted to a single subreddit?
+function getSubExclusiveUsers(db) {
     const subExclusiveUsers = []
 
-    return new Promise(resolve => {
+    return new Promise(async resolve => {
         const sqlAllAuthors = 'SELECT author FROM Authors'
         const allAuthorsResult = await getFromDB(db, sqlAllAuthors)
         const allAuthors = allAuthorsResult.map(packet => packet.author)
         
+        let amount = 0
+
         for (const author of allAuthors) {
+            amount++
+            console.log(amount)
+
             const sqlSubIDs = `SELECT subreddit_id FROM Comments WHERE author = '${author}'`
             const subIDsResult = await getFromDB(db, sqlSubIDs)
             const subIDs = subIDsResult.map(item => item.subreddit_id)
 
-            
+            if(isExclusive(subIDs)) {
+                subExclusiveUsers.push(author)
+            }
         }
+
+        resolve(Promise.all(subExclusiveUsers))
     })
+}
+
+function isExclusive(arr) {
+    return arr.every(item => item === arr[0])
 }
 
 function getFromDB(db, sqlQuery) {
