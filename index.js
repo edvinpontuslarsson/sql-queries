@@ -43,7 +43,7 @@ async function performQueries(db) {
 
     const subsFromLink = await getSubsFromLink(db, specificLink)
     console.log(
-        `Users that commented on ${specificLink} also posted to these subreddits: ${subsFromLink}`
+        `Users that commented on the link ${specificLink} also posted to these subreddits: ${subsFromLink}`
     )
 }
 
@@ -86,11 +86,15 @@ async function getAmountOfCommentsContainingLOL(db) {
 }
 
 // Users that commented on a specific link has also posted to which subreddits?
-// SELECT * FROM Comments where author = '${author}' AND subreddit_id <> '${subredditId}'`
 
 async function getSubsFromLink(db, specificLink) {
-    const authors = await getAuthorsFromLink(db, specificLink)
-    const subIDs = await getSubIDsFromAuthor(db, specificLink)
+    const authorsResult = await getAuthorsFromLink(db, specificLink)
+    const subIDsResult = await getSubIDsFromAuthors(db, authorsResult)
+    const subIDs = arrayUnique(subIDsResult.flat())
+        .map(item => item.subreddit_id)
+    const subResult = await getSubsFromIDs(db, subIDs)
+    const subs = subResult.map(item => item[0].subreddit)
+    return arrayUnique(subs).join(', ')
 }
 
 function getAuthorsFromLink(db, specificLink) {
@@ -102,14 +106,37 @@ function getAuthorsFromLink(db, specificLink) {
     })
 }
 
-function getSubIDsFromAuthor(db, author) {
+function getSubIDsFromAuthors(db, authors) {
+    const subIDs = []
+
     return new Promise(resolve => {
-        const sqlSubIDs = 
-            `SELECT subreddit_id FROM Comments WHERE author = ${author}`
-        const subIDs = getFromDB(db, sqlSubIDs)
-        resolve(subIDs)
+        for (const authorObj of authors) {
+            const sqlSubIDs = 
+            `SELECT DISTINCT subreddit_id FROM 
+                Comments WHERE author = '${authorObj.author}'`
+            const authorSubIDs = getFromDB(db, sqlSubIDs)
+            subIDs.push(authorSubIDs)
+        }
+        
+        resolve(Promise.all(subIDs))
     })
 }
+
+function getSubsFromIDs(db, subIDs) {
+    const subs = []
+
+    return new Promise(resolve => {
+        for (const id of subIDs) {
+            const sqlSub = 
+                `SELECT subreddit from Subreddits where subreddit_id = '${id}'`
+            const sub = getFromDB(db, sqlSub)
+            subs.push(sub)
+        }
+
+        resolve(Promise.all(subs))
+    })
+}
+
 
 function getFromDB(db, sqlQuery) {
     return new Promise(resolve => 
