@@ -78,6 +78,9 @@ async function performQueries(db) {
     console.log(
         `${aUser} has potentially interacted with ${usersConnectedToUser}`
     )
+
+    const subExclusiveUsers = await getSubExclusiveUsers(db)
+    console.log(subExclusiveUsers)
 }
 
 // How many comments have a specific user posted?
@@ -294,7 +297,25 @@ function getUsersConnectedToLinks(db, links) {
     })
 }
 
-// for each subreddit_id, get from Subreddits, obj
+// for each author, get * Comments where author
+
+async function getSubExclusiveUsers(db) {
+    const subExclusiveUsers = []
+
+    return new Promise(resolve => {
+        const sqlAllAuthors = 'SELECT author FROM Authors'
+        const allAuthorsResult = await getFromDB(db, sqlAllAuthors)
+        const allAuthors = allAuthorsResult.map(packet => packet.author)
+        
+        for (const author of allAuthors) {
+            const sqlSubIDs = `SELECT subreddit_id FROM Comments WHERE author = '${author}'`
+            const subIDsResult = await getFromDB(db, sqlSubIDs)
+            const subIDs = subIDsResult.map(item => item.subreddit_id)
+
+            
+        }
+    })
+}
 
 function getFromDB(db, sqlQuery) {
     return new Promise(resolve => 

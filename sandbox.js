@@ -1,69 +1,12 @@
 'use strict'
 
-const allStudents = [
-    {
-        name: 'Mario',
-        subject: 'Biology'
-    },
-    {
-        name: 'Marge Simpson',
-        subject: 'Math'
-    },
-    {
-        name: 'Marge Simpson',
-        subject: 'Psychology'
-    },
-    {
-        name: 'Mario',
-        subject: 'Computer Science'
-    },
-    {
-        name: 'Donald Duck',
-        subject: 'Physics'
-    },
-    {
-        name: 'Batman',
-        subject: 'Batman!'
-    },
-    {
-        name: 'Batman',
-        subject: 'Batman!'
-    },
-    {
-        name: 'Batman',
-        subject: 'Batman!'
-    },
-    {
-        name: 'Batman',
-        subject: 'Batman!'
-    },
-    {
-        name: 'Batman',
-        subject: 'Batman!'
-    },
-    {
-        name: 'Mario',
-        subject: 'Law'
-    }
-]
+const exclusive = ['a', 'a', 'a']
+const notExclusive = ['c', 'a', 'b', 'b', 'g']
 
-// find out which students only take one subject
+console.log(
+    exclusive.every(item => item === exclusive[0]) + ' true'
+)
 
-const singleSubjectStudents = []
-
-for(let i = 0; i < allStudents.length; i++) {
-    if (singleSubjectStudents.length === 0) 
-        singleSubjectStudents.push(allStudents[i])
-    else {
-        for(let j = 0; j < singleSubjectStudents.length; j++) {
-            if(
-                allStudents[i].name === singleSubjectStudents[j].name
-                && allStudents[i].subject !== singleSubjectStudents[j].subject
-            ) {
-                singleSubjectStudents.splice(j, 1) // removes from array
-            }
-        }
-    }
-}
-
-console.log(singleSubjectStudents)
+console.log(
+    notExclusive.every(item => item === exclusive[0]) + ' false'
+)
