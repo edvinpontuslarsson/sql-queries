@@ -294,6 +294,8 @@ function getUsersConnectedToLinks(db, links) {
     })
 }
 
+// for each subreddit_id, get from Subreddits, obj
+
 function getFromDB(db, sqlQuery) {
     return new Promise(resolve => 
         db.query(sqlQuery, (err, result) => {
