@@ -45,6 +45,11 @@ async function performQueries(db) {
     console.log(
         `Users that commented on the link ${specificLink} also posted to these subreddits: ${subsFromLink}`
     )
+
+    const highScoreUsers = await getHighScoreUsers(db)
+    const lowScoreUsers = await getLowScoreUsers(db)
+    console.log(`${highScoreUsers[0].author} have the highest scored comments of ${highScoreUsers[0].combined_score}`)
+    console.log(`${lowScoreUsers} has the lowest scored comments`)
 }
 
 // How many comments have a specific user posted?
@@ -86,7 +91,6 @@ async function getAmountOfCommentsContainingLOL(db) {
 }
 
 // Users that commented on a specific link has also posted to which subreddits?
-
 async function getSubsFromLink(db, specificLink) {
     const authorsResult = await getAuthorsFromLink(db, specificLink)
     const subIDsResult = await getSubIDsFromAuthors(db, authorsResult)
@@ -137,6 +141,26 @@ function getSubsFromIDs(db, subIDs) {
     })
 }
 
+// Which users have the highest and lowest combined scores? (combined as the sum of all scores)
+async function getHighScoreUsers(db) {
+    const max = await getMaxScore(db)
+    const sqlGetHighScoreUsers = 
+        `SELECT * FROM Authors WHERE combined_score = '${max[0].score}'`
+    const highScoreUsers = await getFromDB(db, sqlGetHighScoreUsers)
+    return highScoreUsers
+}
+
+function getMaxScore(db) {
+    return new Promise(resolve => {
+        const sqlMaxScore = 'SELECT MAX(combined_score) AS score FROM Authors'
+        const max = getFromDB(db, sqlMaxScore)
+        resolve(max)
+    })
+}
+
+function getLowScoreUsers(db) {
+
+}
 
 function getFromDB(db, sqlQuery) {
     return new Promise(resolve => 
