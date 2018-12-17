@@ -67,6 +67,17 @@ async function performQueries(db) {
 
     console.log(`The subreddits ${maxScoreSubs} have the highest scored comments`)
     console.log(`The subreddits ${lowScoreSubs} have the lowest scored comments`)
+
+    const aUser = 'tinha'
+
+    const linksByUser = await getLinksConnectedToUser(db, aUser)
+    const usersConnectedToUserResult = await getUsersConnectedToLinks(db, linksByUser)
+    const usersConnectedToUser = arrayUnique(
+        usersConnectedToUserResult.flat().map(item => item.author)
+    ).join(', ')
+    console.log(
+        `${aUser} has potentially interacted with ${usersConnectedToUser}`
+    )
 }
 
 // How many comments have a specific user posted?
@@ -258,6 +269,28 @@ function getMinScore(db) {
         const sqlMin = 'SELECT MIN(score) AS score FROM Comments'
         const min = getFromDB(db, sqlMin)
         resolve(min)
+    })
+}
+
+// Given a specific user, list all the users he or she has potentially interacted with (i.e., everyone who as commented on a link that
+// the specific user has commented on).
+function getLinksConnectedToUser(db, specificUser) {
+    const sqlLinks = `SELECT link_id FROM Comments WHERE author = '${specificUser}'`
+    return getFromDB(db, sqlLinks)
+}
+
+function getUsersConnectedToLinks(db, links) {
+    const allUsers = []
+
+    return new Promise(resolve => {
+        for (let i = 0; i < links.length; i++) {
+            const sqlUsers =
+                `SELECT author FROM Comments WHERE link_id = '${links[i].link_id}'`
+            const users = getFromDB(db, sqlUsers)
+            allUsers.push(users)
+        }
+
+        resolve(Promise.all(allUsers))
     })
 }
 
