@@ -41,36 +41,18 @@ async function performQueries(db) {
         `${amountOfCommentsContainingLOL} comments include the word "lol"`
     )
 
-    const nestedCommentsConnectedToLink = await getNestedCommentsConnectedToLink(db, specificLink)
-    const subredditsConnectedToLink = getSubredditsFromNestedComments(nestedCommentsConnectedToLink)
+    const subsFromLink = await getSubsFromLink(db, specificLink)
     console.log(
-        `Users that commented on ${specificLink} also posted to these subreddits: ${subredditsConnectedToLink.join(', ')}`
+        `Users that commented on ${specificLink} also posted to these subreddits: ${subsFromLink}`
     )
-
-    const allComments = await getAllComments(db)
-    const allAuthors = getAllAuthors(allComments)
-    console.log(allAuthors)
-}
-
-function getFromDB(db, sqlQuery) {
-    return new Promise(resolve => 
-        db.query(sqlQuery, (err, result) => {
-            if (err) throw err
-            resolve(result)
-    }))
-}
-
-function getAllComments(db) {
-    const sqlGetAllComments = 'SELECT * FROM Comments'
-    return getFromDB(db, sqlGetAllComments)
 }
 
 // How many comments have a specific user posted?
 async function getUserCommentsAmount(db, specificUser) {
     const sqlUserCommentsAmount = 
-            `SELECT COUNT(*) FROM Comments WHERE author = '${specificUser}'`
+            `SELECT combined_score FROM Authors WHERE author = '${specificUser}'`
     const userCommentsAmountResult = await getFromDB(db, sqlUserCommentsAmount)
-    return userCommentsAmountResult.length
+    return userCommentsAmountResult[0].combined_score
 }
 
 // How many comments does a specific subreddit get per day?
@@ -104,38 +86,35 @@ async function getAmountOfCommentsContainingLOL(db) {
 }
 
 // Users that commented on a specific link has also posted to which subreddits?
-async function getNestedCommentsConnectedToLink(db, specificLink) {
-    const subreddits = []
-    
-    return new Promise(async resolve => {
-        const sqlUsers = `SELECT * FROM Comments WHERE link_id = '${specificLink}'`
-        const usersResult = await getFromDB(db, sqlUsers)
-        const users = usersResult.map(row => row.author)
+// SELECT * FROM Comments where author = '${author}' AND subreddit_id <> '${subredditId}'`
 
-        users.forEach(user => {
-            const sqlComments = `SELECT * FROM Comments WHERE author = '${user}'`
-            const commentsResult = getFromDB(db, sqlComments)
+async function getSubsFromLink(db, specificLink) {
+    const authors = await getAuthorsFromLink(db, specificLink)
+    const subIDs = await getSubIDsFromAuthor(db, specificLink)
+}
 
-            subreddits.push(commentsResult)
-        })
-
-        resolve(Promise.all(subreddits))
+function getAuthorsFromLink(db, specificLink) {
+    return new Promise(resolve => {
+        const sqlAuthors = 
+        `SELECT DISTINCT author FROM Comments WHERE link_id = '${specificLink}'`
+        const authors = getFromDB(db, sqlAuthors)
+        resolve(authors)
     })
 }
 
-function getSubredditsFromNestedComments(nestedComments) {
-    const subreddits = nestedComments.flat()
-        .map(comment => comment.subreddit)
-    return arrayUnique(subreddits)
+function getSubIDsFromAuthor(db, author) {
+    return new Promise(resolve => {
+        const sqlSubIDs = 
+            `SELECT subreddit_id FROM Comments WHERE author = ${author}`
+        const subIDs = getFromDB(db, sqlSubIDs)
+        resolve(subIDs)
+    })
 }
 
-function getAllAuthors(allComments) {
-    const allAuthors = allComments.map(comment => comment.author)
-
-    // arrayUnique has trouble handling arrays with more than 9999 items
-    const arrayChunks = arrayChunk(allAuthors, 9999)
-
-    arrayChunks.forEach(chunk => { arrayUnique(chunk) })
-
-    return arrayChunks.flat()
+function getFromDB(db, sqlQuery) {
+    return new Promise(resolve => 
+        db.query(sqlQuery, (err, result) => {
+            if (err) throw err
+            resolve(result)
+    }))
 }
