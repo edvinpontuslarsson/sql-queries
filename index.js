@@ -54,11 +54,19 @@ async function performQueries(db) {
     console.log(`The users ${highScoreUsers} have the highest combined score with ${highScoreUsersResult[0].combined_score}`)
     console.log(`The users ${lowScoreUsers} have the lowest combined score with ${lowScoreUsersResult[0].combined_score}`)
 
-    const highScoreCommentsResult = await getHighScoreComments(db)
+    const maxScoreSubsResult = await getSubredditsWithMaxComment(db)
+    const lowScoreSubsResult = await getSubredditsWithMinimumComment(db)
+    
+    const maxScoreSubs = arrayUnique(
+        maxScoreSubsResult.map(item => item[0].subreddit)
+    ).join(', ')
 
-    const highScoreComments = highScoreCommentsResult.map(item => item.subreddit_id).join(', ')
+    const lowScoreSubs = arrayUnique(
+        lowScoreSubsResult.map(item => item[0].subreddit)
+    ).join(', ')
 
-    console.log(`The subreddits ${highScoreComments} have the highest scored comments with ${highScoreCommentsResult[0].score}`)
+    console.log(`The subreddits ${maxScoreSubs} have the highest scored comments`)
+    console.log(`The subreddits ${lowScoreSubs} have the lowest scored comments`)
 }
 
 // How many comments have a specific user posted?
@@ -141,7 +149,7 @@ function getSubsFromIDs(db, subIDs) {
     return new Promise(resolve => {
         for (const id of subIDs) {
             const sqlSub = 
-                `SELECT subreddit from Subreddits where subreddit_id = '${id}'`
+                `SELECT subreddit from Subreddits WHERE subreddit_id = '${id}'`
             const sub = getFromDB(db, sqlSub)
             subs.push(sub)
         }
@@ -185,12 +193,56 @@ function getMinCombinedScore(db) {
 }
 
 // Which subreddits have the highest and lowest scored comments?
+function getSubredditsWithMaxComment(db) {
+    const subs = []
+
+    return new Promise(async resolve => {
+        const highScoreComments = await getHighScoreComments(db)
+
+        for (const comment of highScoreComments) {
+            const sqlCommentSub = 
+                `SELECT subreddit FROM Subreddits WHERE 
+                    subreddit_id = '${comment.subreddit_id}'`
+            const sub = getFromDB(db, sqlCommentSub)
+            subs.push(sub)
+        }
+
+        resolve(Promise.all(subs))
+    })
+}
+
+function getSubredditsWithMinimumComment(db) {
+    const subs = []
+
+    return new Promise(async resolve => {
+        const lowScoreComments = await getLowScoreComments(db)
+
+        for (const comment of lowScoreComments) {
+            const sqlCommentSub = 
+                `SELECT subreddit FROM Subreddits WHERE 
+                    subreddit_id = '${comment.subreddit_id}'`
+            const sub = getFromDB(db, sqlCommentSub)
+            subs.push(sub)
+        }
+
+        resolve(Promise.all(subs))
+    })
+}
+
 async function getHighScoreComments(db) {
     const max = await getMaxScore(db)
     const sqlHighScoreComments = 
-        `SELECT * FROM Comments where score = ${max[0].score}`
+        `SELECT * FROM Comments WHERE score = ${max[0].score}`
     const highScoreComments = getFromDB(db, sqlHighScoreComments)
     return highScoreComments
+}
+
+async function getLowScoreComments(db) {
+    const min = await getMinScore(db)
+    const sqlLowScoreComments = 
+        `SELECT * FROM Comments WHERE score = ${min[0].score}`
+    const lowScoreComments = getFromDB(db, sqlLowScoreComments)
+    return lowScoreComments
 }
 
 function getMaxScore(db) {
@@ -198,6 +250,14 @@ function getMaxScore(db) {
         const sqlMax = 'SELECT MAX(score) AS score FROM Comments'
         const max = getFromDB(db, sqlMax)
         resolve(max)
+    })
+}
+
+function getMinScore(db) {
+    return new Promise(resolve => {
+        const sqlMin = 'SELECT MIN(score) AS score FROM Comments'
+        const min = getFromDB(db, sqlMin)
+        resolve(min)
     })
 }
 
